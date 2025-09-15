@@ -3,32 +3,43 @@
 #include <cstring>
 #include <vector>
 
+char kth(int n, long long k, const std::vector<long long>& len){
+    while (n > 1) {
+        if (k <= len[n-2]) 
+            n -= 2;
+        else{
+            k -= len[n-2];
+            n -= 1;
+        }
+    }
+    return (n == 0 ? 'a' : 'b');
+}
+
+
 int main(){
     freopen("input.txt", "r", stdin);
     freopen("output.txt", "w", stdout);
 
     int t;
     std::cin >> t;
-    int maxIndex = 1;
 
-    std::vector<std::string> fibos;
-    fibos.reserve(46);
-    fibos.push_back("a");
-    fibos.push_back("b");
+    std::vector<long long> len(46);
     
-    for(int e = 0; e < t; ++e)
+    len[0] = 1;
+    len[1] = 1;
+    
+    for(int e = 0, i = 2; e < t; ++e)
     {
         int n, k;
         std::cin >> n >> k;
 
-        for(int i = maxIndex; i < n; ++i)
+        for(; i <= n; ++i)
         {
-            fibos.push_back(fibos[i - 1] + fibos[i]);
-            maxIndex = i;
+            len[i] = len[i - 2] + len[i - 1];
         }
-        std::cout << fibos[n][k - 1] << "\n";
+
+        std::cout << kth(n, k, len) << "\n";
 
     }
-    
     return 0;
 }
