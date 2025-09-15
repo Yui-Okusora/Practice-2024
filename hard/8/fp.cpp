@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
+#include <climits>
 
 class bitarray
 {
@@ -51,16 +52,17 @@ int main(){
         maxN = std::max(maxN, input[i]);
     }
 
-    bitarray prime(maxN + 200 - minN + 1);
+    bitarray prime(maxN + 500 - minN + 1);
 
-    sang(prime, minN, maxN + 200);
+    sang(prime, minN, maxN + 500);
 
     for(int i = 0; i < n; ++i)
     {
-        for(int j = input[i]; j <= maxN + 200; ++j){
+        for(int j = input[i]; j <= maxN + 500; ++j){
             if(prime.get(j - minN))
             {
-                std::cout << j << "\n";
+                if(j <= 1) std::cout << 2 << "\n";
+                else std::cout << j << "\n";
                 break;
             }
         }
