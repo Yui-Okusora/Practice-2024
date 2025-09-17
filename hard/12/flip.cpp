@@ -3,49 +3,49 @@
 #include <cstdint>
 #include <cstring>
 #include <cmath>
+#include <optional>
+#include <array>
 
-bool gf2_collapse_sum16(uint16_t n){
-    n ^= n >> 8;
-    n ^= n >> 4;
-    n ^= n >> 2;
-    n ^= n >> 1;
-    return n & 1;
-}
+std::optional<uint16_t> solveGF2(std::array<uint32_t, 16> &M) {
+    int rank = 0;
 
-uint16_t gf2_matmul16(const uint16_t* mat, uint16_t vec){
-    uint16_t ans = 0;
-    #pragma unroll
-    for(int i = 0; i < 16; ++i){
-        uint16_t temp = gf2_collapse_sum16(mat[i] & vec);
-        ans |= temp << (15 - i);
+    for (int col = 0; col < 16; ++col) {
+        int pivot = -1;
+        for (int row = rank; row < 16; ++row) {
+            if (M[row] & (1u << col)) {
+                pivot = row;
+                break;
+            }
+        }
+        if (pivot == -1) continue;
+
+        if (pivot != rank) std::swap(M[pivot], M[rank]);
+
+        for (int row = 0; row < 16; ++row) {
+            if (row != rank && (M[row] & (1u << col))) {
+                M[row] ^= M[rank];
+            }
+        }
+        ++rank;
     }
-    return ans;
+
+    for (int row = rank; row < 16; ++row) {
+        if ((M[row] & 0xFFFFu) == 0 && (M[row] >> 16)) {
+            return std::nullopt;
+        }
+    }
+
+    uint16_t x = 0;
+    for (int row = 0; row < 16; ++row) {
+        uint16_t a = M[row] & 0xFFFFu;
+        if (a == 0) continue;
+        int col = __builtin_ctz(a);
+        if (M[row] >> 16) {
+            x |= (1u << col);
+        }
+    }
+    return x;
 }
-
-/*
-1  2  3  4
-5  6  7  8
-9  10 11 12
-13 14 15 16
-*/
-
-//                        1234567890123456
-const uint16_t A[16] = {0b1100100000000000,
-                        0b1110010000000000,
-                        0b0111001000000000,
-                        0b0011000100000000,
-                        0b1000110010000000,
-                        0b0100111001000000,
-                        0b0010011100100000,
-                        0b0001001100010000,
-                        0b0000100011001000,
-                        0b0000010011100100,
-                        0b0000001001110010,
-                        0b0000000100110001,
-                        0b0000000010001100,
-                        0b0000000001001110,
-                        0b0000000000100111,
-                        0b0000000000010011};
 
 int main(){
     freopen("input.txt", "r", stdin);
@@ -57,44 +57,49 @@ int main(){
     for(int p = 0; p < c; ++p)
     {
         std::string str;
-        uint16_t b = 0;
-        #pragma unroll
+        std::array<uint32_t, 16> M1 = {0b00000000000000001100100000000000,
+                                       0b00000000000000001110010000000000,
+                                       0b00000000000000000111001000000000,
+                                       0b00000000000000000011000100000000,
+                                       0b00000000000000001000110010000000,
+                                       0b00000000000000000100111001000000,
+                                       0b00000000000000000010011100100000,
+                                       0b00000000000000000001001100010000,
+                                       0b00000000000000000000100011001000,
+                                       0b00000000000000000000010011100100,
+                                       0b00000000000000000000001001110010,
+                                       0b00000000000000000000000100110001,
+                                       0b00000000000000000000000010001100,
+                                       0b00000000000000000000000001001110,
+                                       0b00000000000000000000000000100111,
+                                       0b00000000000000000000000000010011};
+        std::array<uint32_t, 16> M2(M1);
+
         for(int i = 0; i < 4; ++i){
             std::cin >> str;
-            b |= (str[0] == 'H') ? 0 : 1;
-            b <<= 1;
-            b |= (str[1] == 'H') ? 0 : 1;
-            b <<= 1;
-            b |= (str[2] == 'H') ? 0 : 1;
-            b <<= 1;
-            b |= (str[3] == 'H') ? 0 : 1;
-            if(i < 3) b <<= 1;
-        }
-
-        if(b == 0 || b == 0xFFFF){
-            std::cout << "0\n";
-            continue;
-        }
-
-        int minCount = INT32_MAX;
-
-        #pragma unroll
-        for(int x = 0xFFFF; x > 0; --x){
-            uint16_t ans = gf2_matmul16(A, (uint16_t)x) ^ b;
-            int count = 0;
-            if(ans == 0 || ans == 0xFFFF){
-                #pragma unroll
-                for(int i = 0; i < 16; ++i)
-                count += (x >> i) & 1;
-                minCount = std::min(minCount, count);
+            for(int j = 0; j < 4; ++j)
+            {
+                M1[i * 4 + j] |= ((str[j] == 'H') ? 0 : 1) << 16;
+                M2[i * 4 + j] |= ((str[j] == 'H') ? 1 : 0) << 16;
             }
         }
+        
+        auto ans1 = solveGF2(M1);
+        auto ans2 = solveGF2(M2);
 
-        if(minCount == INT32_MAX)
-        std::cout << "Impossible\n";
-        else
-        std::cout << minCount << "\n";
+        if(ans1 == std::nullopt && ans2 == std::nullopt){
+            std::cout << "Impossible\n";
+            return 0;
+        }else{
+            int count1 = 0, count2 = 0;
+            uint16_t &b1 = ans1.value(), &b2 = ans2.value();
+            for(int i = 0; i < 16; ++i)
+            {
+                if(ans1 != std::nullopt) count1 += (*ans1 >> i) & 0b1;
+                if(ans1 != std::nullopt) count2 += (*ans2 >> i) & 0b1;
+            }
+            std::cout << std::min(count1, count2) << "\n";
+        }   
     }
-    
     return 0;
 }
