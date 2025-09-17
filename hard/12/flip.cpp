@@ -5,6 +5,7 @@
 #include <cmath>
 #include <optional>
 #include <array>
+#include <bit>
 
 std::optional<uint16_t> solveGF2(std::array<uint32_t, 16> &M) {
     int rank = 0;
@@ -39,7 +40,7 @@ std::optional<uint16_t> solveGF2(std::array<uint32_t, 16> &M) {
     for (int row = 0; row < 16; ++row) {
         uint16_t a = M[row] & 0xFFFFu;
         if (a == 0) continue;
-        int col = __builtin_ctz(a);
+        int col = std::__countr_zero(a);
         if (M[row] >> 16) {
             x |= (1u << col);
         }
@@ -87,19 +88,20 @@ int main(){
         auto ans1 = solveGF2(M1);
         auto ans2 = solveGF2(M2);
 
-        if(ans1 == std::nullopt && ans2 == std::nullopt){
+        int best = 0x7FFFFFFF;
+
+        if (ans1) {
+            best = std::min(best, std::__popcount(ans1.value()));
+        }
+        if (ans2) {
+            best = std::min(best, std::__popcount(ans2.value()));
+        }
+
+        if (best == 0x7FFFFFFF) {
             std::cout << "Impossible\n";
-            return 0;
-        }else{
-            int count1 = 0, count2 = 0;
-            uint16_t &b1 = ans1.value(), &b2 = ans2.value();
-            for(int i = 0; i < 16; ++i)
-            {
-                if(ans1 != std::nullopt) count1 += (*ans1 >> i) & 0b1;
-                if(ans1 != std::nullopt) count2 += (*ans2 >> i) & 0b1;
-            }
-            std::cout << std::min(count1, count2) << "\n";
-        }   
+        } else {
+            std::cout << best << "\n";
+        }
     }
     return 0;
 }
